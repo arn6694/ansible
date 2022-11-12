@@ -1,0 +1,23 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: install vim and neofetch
+    apt:
+      name: 
+        - vim
+        - neofetch
+      state: latest 
+      update_cache: yes   
+    when: ansible_distribution in ["Debian", "Ubuntu"]
+
+  - name: install vim and neofetch
+    pacman:
+      name: 
+        - vim
+        - neofetch
+      state: latest
+      update_cache: yes
+    when: ansible_distribution == "Archlinux"

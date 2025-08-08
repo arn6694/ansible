@@ -2,22 +2,24 @@
 
 - hosts: all
   become: true
+  gather_facts: true
   tasks:
 
-  - name: install vim and neofetch
+  - name: install vim and neofetch (Debian family)
     apt:
       name: 
         - vim
         - neofetch
       state: latest 
-      update_cache: yes   
-    when: ansible_distribution in ["Debian", "Ubuntu"]
+      update_cache: yes  
+      cache_valid_time: 3600
+    when: ansible_os_family == "Debian"
 
-  - name: install vim and neofetch
+  - name: install vim and neofetch (Arch family)
     pacman:
       name: 
         - vim
         - neofetch
-      state: latest
+      state: present
       update_cache: yes
-    when: ansible_distribution == "Archlinux"
+    when: ansible_os_family == "Archlinux"

@@ -16,9 +16,8 @@ common_packages:
   - lsof
   - ncdu
 
-# locate/updatedb. plocate everywhere it exists (Debian 12+, Arch, Fedora,
-# EPEL on Rocky — mlocate is gone from the first three); SUSE still ships
-# mlocate. Resolved in tasks/main.yml.
+# locate/updatedb. plocate on Debian 12+/Arch/Fedora; mlocate on RHEL/Rocky
+# and SUSE (EPEL9 has no plocate). Resolved in tasks/main.yml.
 common_install_locate: true
 
 # RHEL/Rocky ship curl-minimal, which provides /usr/bin/curl but CONFLICTS with

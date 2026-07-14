@@ -42,9 +42,12 @@
 # curl: safe on Debian/Fedora. On RHEL/Rocky, curl-minimal already provides the
 # binary and the full 'curl' package conflicts with it — so only install where
 # the binary is genuinely absent.
-- name: Install locate (plocate; mlocate on SUSE)
+# plocate replaced mlocate on Debian 12+, Arch, and Fedora — but NOT on
+# RHEL/Rocky 9 (not even via EPEL) or SUSE, which still ship mlocate.
+# Verified empirically: EPEL9 has no plocate package.
+- name: Install locate (plocate or mlocate, distro-dependent)
   ansible.builtin.package:
-    name: "{{ 'mlocate' if ansible_os_family == 'Suse' else 'plocate' }}"
+    name: "{{ 'plocate' if (ansible_os_family in ['Debian', 'Archlinux'] or ansible_distribution == 'Fedora') else 'mlocate' }}"
     state: present
   when: common_install_locate | bool
   tags: [packages]

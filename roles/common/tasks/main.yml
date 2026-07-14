@@ -42,6 +42,13 @@
 # curl: safe on Debian/Fedora. On RHEL/Rocky, curl-minimal already provides the
 # binary and the full 'curl' package conflicts with it — so only install where
 # the binary is genuinely absent.
+- name: Install locate (plocate; mlocate on SUSE)
+  ansible.builtin.package:
+    name: "{{ 'mlocate' if ansible_os_family == 'Suse' else 'plocate' }}"
+    state: present
+  when: common_install_locate | bool
+  tags: [packages]
+
 - name: Check for curl binary
   ansible.builtin.stat:
     path: /usr/bin/curl

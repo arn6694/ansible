@@ -1,0 +1,37 @@
+---
+- name: Install MOTD generator
+  ansible.builtin.copy:
+    src: generate-motd.sh
+    dest: /usr/local/bin/generate-motd.sh
+    mode: '0755'
+    owner: root
+    group: root
+  tags: [motd]
+
+# CRITICAL: /etc/profile.d runs for EVERY login shell, including the
+# non-interactive ones that scp/sftp/rsync open. Printing a banner there
+# injects it into the data stream and corrupts transfers. The `case $-`
+# guard restricts output to interactive shells only.
+- name: Hook MOTD into login (interactive shells ONLY)
+  ansible.builtin.copy:
+    dest: /etc/profile.d/z99-motd.sh
+    mode: '0644'
+    owner: root
+    group: root
+    content: |
+      # Managed by Ansible
+      # Interactive-only: printing here would corrupt scp/sftp/rsync streams.
+      case $- in
+          *i*) [ -x /usr/local/bin/generate-motd.sh ] && /usr/local/bin/generate-motd.sh ;;
+            *) ;;
+      esac
+  tags: [motd]
+
+- name: Blank static MOTD to avoid double banner
+  ansible.builtin.copy:
+    dest: /etc/motd
+    content: ""
+    mode: '0644'
+    owner: root
+    group: root
+  tags: [motd]

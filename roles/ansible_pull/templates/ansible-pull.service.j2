@@ -1,0 +1,15 @@
+[Unit]
+Description=Run ansible-pull to self-configure this machine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=ANSIBLE_HOST_KEY_CHECKING=False
+ExecStart=/usr/bin/env ansible-pull \
+    --url {{ ansible_pull_repo }} \
+    --directory {{ ansible_pull_dir }} \
+    {% if ansible_pull_only_if_changed %}--only-if-changed{% endif %} \
+    {{ ansible_pull_playbook }}
+# Don't let a transient git/network failure spam a red unit.
+SuccessExitStatus=0

@@ -1,0 +1,47 @@
+---
+- name: Fail early if the pull repo was never configured
+  ansible.builtin.assert:
+    that: "'CHANGEME' not in ansible_pull_repo"
+    fail_msg: >-
+      ansible_pull_repo is still the placeholder. Set it in
+      group_vars/all.yml before enabling the pull timer.
+  tags: [pull]
+
+- name: Ensure ansible + git are installed
+  ansible.builtin.package:
+    name:
+      - ansible
+      - git
+    state: present
+  tags: [pull]
+
+- name: Create pull checkout directory
+  ansible.builtin.file:
+    path: "{{ ansible_pull_dir }}"
+    state: directory
+    mode: '0755'
+  tags: [pull]
+
+- name: Install ansible-pull systemd service
+  ansible.builtin.template:
+    src: ansible-pull.service.j2
+    dest: /etc/systemd/system/ansible-pull.service
+    mode: '0644'
+  notify: reload systemd
+  tags: [pull]
+
+- name: Install ansible-pull systemd timer
+  ansible.builtin.template:
+    src: ansible-pull.timer.j2
+    dest: /etc/systemd/system/ansible-pull.timer
+    mode: '0644'
+  notify: reload systemd
+  tags: [pull]
+
+- name: Enable and start the pull timer
+  ansible.builtin.systemd:
+    name: ansible-pull.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [pull]

@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodic ansible-pull
+
+[Timer]
+OnBootSec=5min
+OnCalendar={{ ansible_pull_interval }}
+# Laptops sleep. Without Persistent, a missed run is simply skipped forever.
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,5 @@
+---
+admin_user: brian
+admin_user_shell: /bin/bash
+admin_user_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK2pqLwc4m7rYEtpvAnBJbfl+PBvxloHFGed7F38IHV8 brian@ser8"
+admin_user_passwordless_sudo: true

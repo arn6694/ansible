@@ -1,0 +1,11 @@
+# Secrets — never commit
+.env.checkmk
+*.vault_pass
+.ansible_vault_pass
+vault_pass*
+
+# Ansible noise
+*.retry
+.ansible/
+__pycache__/
+*.pyc

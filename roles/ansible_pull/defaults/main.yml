@@ -1,0 +1,8 @@
+---
+# Public repo => anonymous HTTPS clone. No deploy keys, no tokens: any fresh
+# machine can pull with zero credential setup (the LearnLinuxTV model).
+ansible_pull_repo: "https://github.com/arn6694/ansible.git"
+ansible_pull_playbook: local.yml
+ansible_pull_dir: /opt/ansible-pull
+ansible_pull_interval: "hourly"     # systemd OnCalendar
+ansible_pull_only_if_changed: true  # -o : no-op unless the repo actually moved

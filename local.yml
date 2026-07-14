@@ -1,0 +1,20 @@
+---
+# ansible-pull entrypoint. Each machine clones this repo and runs THIS file
+# against itself. No control node involved — that is the point of pull mode.
+#
+#   ansible-pull -U https://github.com/arn6694/ansible.git -o
+#
+- name: Workstation baseline (pull mode)
+  hosts: localhost
+  connection: local
+  become: true
+
+  roles:
+    - role: common
+      tags: [common, packages, shell]
+    - role: admin_user
+      tags: [user, ssh]
+    - role: motd
+      tags: [motd]
+    - role: ansible_pull
+      tags: [pull, timer]

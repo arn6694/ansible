@@ -1,0 +1,73 @@
+---
+# Minimal images (debootstrap, cloud base images) ship without sudo at all, so
+# neither the binary nor /etc/sudoers.d exists. Bootstrapping a fresh host is
+# the whole point of this role, so don't assume they're there.
+- name: Ensure sudo is installed
+  ansible.builtin.package:
+    name: sudo
+    state: present
+  tags: [user, sudo]
+
+- name: Ensure /etc/sudoers.d exists
+  ansible.builtin.file:
+    path: /etc/sudoers.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  tags: [user, sudo]
+
+- name: Ensure sudo group exists
+  ansible.builtin.group:
+    name: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+    state: present
+  tags: [user]
+
+- name: Create admin user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: "{{ admin_user_shell }}"
+    groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+    append: true          # never strip groups the user already has
+    create_home: true
+    state: present
+  tags: [user]
+
+# Deliberately builtin-only. The obvious module here is ansible.posix.
+# authorized_key, but ansible-core (what RHEL/Rocky's package ships, and what
+# pull hosts get) does NOT bundle the ansible.posix collection — the play dies
+# with "couldn't resolve module". lineinfile is builtin everywhere and appends
+# idempotently, so it won't clobber other trusted keys either.
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0700'
+  tags: [ssh]
+
+- name: Install SSH public key
+  ansible.builtin.lineinfile:
+    path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+    line: "{{ admin_user_pubkey }}"
+    state: present
+    create: true
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0600'
+  tags: [ssh]
+
+# validate= runs visudo -cf before the file is put in place. A malformed
+# sudoers file can lock you out of the machine permanently; this makes that
+# failure impossible.
+- name: Grant passwordless sudo
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ admin_user }}"
+    content: "{{ admin_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    mode: '0440'
+    owner: root
+    group: root
+    validate: 'visudo -cf %s'
+  when: admin_user_passwordless_sudo | bool
+  tags: [user, sudo]

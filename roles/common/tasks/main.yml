@@ -1,0 +1,77 @@
+---
+- name: Assert supported OS family
+  ansible.builtin.assert:
+    that: ansible_os_family in ['Debian', 'RedHat', 'Suse', 'Archlinux']
+    fail_msg: "Unsupported OS family: {{ ansible_os_family }}"
+  tags: [always]
+
+# EPEL carries htop on RHEL/Rocky/Alma. Fedora already has it, and enabling
+# EPEL there would be wrong.
+- name: Enable EPEL (RHEL-likes, not Fedora)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution != 'Fedora'
+    - common_enable_epel | bool
+  tags: [packages]
+
+- name: Refresh apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+  tags: [packages]
+
+# pacman never auto-syncs. Without -Sy first, `package:` installs fail on any
+# Arch box whose db is stale. Command (not the pacman module) so this works
+# even before the full `ansible` package (with community.general) is present.
+- name: Refresh pacman cache
+  ansible.builtin.command: pacman -Sy --noconfirm
+  changed_when: false
+  when: ansible_os_family == 'Archlinux'
+  tags: [packages]
+
+- name: Install base packages
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
+  tags: [packages]
+
+# curl: safe on Debian/Fedora. On RHEL/Rocky, curl-minimal already provides the
+# binary and the full 'curl' package conflicts with it — so only install where
+# the binary is genuinely absent.
+- name: Check for curl binary
+  ansible.builtin.stat:
+    path: /usr/bin/curl
+  register: curl_bin
+  tags: [packages]
+
+- name: Install curl (only where absent)
+  ansible.builtin.package:
+    name: curl
+    state: present
+  when: common_install_curl | bool and not curl_bin.stat.exists
+  tags: [packages]
+
+- name: Global shell config (aliases, history timestamps)
+  ansible.builtin.copy:
+    dest: /etc/profile.d/custom_system_wide.sh
+    mode: '0644'
+    owner: root
+    group: root
+    content: |
+      # Managed by Ansible — do not edit by hand
+      export HISTTIMEFORMAT="%F %T "
+      alias ll='ls -alh --color=auto'
+  tags: [shell]
+
+- name: Set global prompt
+  ansible.builtin.blockinfile:
+    path: "{{ '/etc/bash.bashrc' if ansible_os_family in ['Debian', 'Archlinux'] else '/etc/bashrc' }}"
+    marker: "# {mark} ANSIBLE MANAGED PROMPT"
+    create: true
+    mode: '0644'
+    block: "{{ common_prompt }}"
+  tags: [shell]

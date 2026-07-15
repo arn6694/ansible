@@ -1,0 +1,44 @@
+# Managed by Ansible (common role) — do not edit by hand.
+# Interactive conveniences only: aliases don't expand in scripts, so nothing
+# here changes non-interactive behaviour.
+
+# History: timestamps, more of it, no duplicate/space-prefixed entries.
+export HISTTIMEFORMAT="%F %T "
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoreboth
+
+# Listing & navigation
+alias ll='ls -alh --color=auto'
+alias la='ls -A --color=auto'
+alias grep='grep --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias mkdir='mkdir -pv'
+
+# Human-readable by default
+alias df='df -h'
+alias du='du -h'
+alias free='free -h'
+
+# Networking & system at a glance
+alias ipa='ip -br -c a'
+alias ports='ss -tulpn'
+alias histg='history | grep'
+alias jf='journalctl -f'
+alias timers='systemctl list-timers --no-pager'
+
+# One `update` that does the right thing on every distro
+{% if ansible_os_family == 'Debian' %}
+alias update='sudo apt update && sudo apt full-upgrade'
+{% elif ansible_os_family == 'Archlinux' %}
+alias update='sudo pacman -Syu'
+{% elif ansible_os_family == 'Suse' %}
+alias update='sudo zypper update'
+{% else %}
+alias update='sudo dnf upgrade --refresh'
+{% endif %}
+
+# Trigger an ansible-pull run right now instead of waiting for the timer,
+# then show what it did.
+alias pullnow='sudo systemctl start ansible-pull.service; journalctl -u ansible-pull.service -n 30 --no-pager'

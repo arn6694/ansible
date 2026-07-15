@@ -66,22 +66,25 @@
   tags: [packages]
 
 - name: Global shell config (aliases, history timestamps)
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: custom_system_wide.sh.j2
     dest: /etc/profile.d/custom_system_wide.sh
     mode: '0644'
     owner: root
     group: root
-    content: |
-      # Managed by Ansible — do not edit by hand
-      export HISTTIMEFORMAT="%F %T "
-      alias ll='ls -alh --color=auto'
   tags: [shell]
 
-- name: Set global prompt
+# Debian/Arch source /etc/profile.d only for LOGIN shells, so GUI terminals
+# would miss the aliases there; RHEL's /etc/bashrc sources it for every
+# interactive shell. Sourcing it from this block covers both worlds (double
+# sourcing on login shells is harmless — aliases/exports just re-set).
+- name: Set global prompt and hook aliases into interactive shells
   ansible.builtin.blockinfile:
     path: "{{ '/etc/bash.bashrc' if ansible_os_family in ['Debian', 'Archlinux'] else '/etc/bashrc' }}"
     marker: "# {mark} ANSIBLE MANAGED PROMPT"
     create: true
     mode: '0644'
-    block: "{{ common_prompt }}"
+    block: |
+      [ -f /etc/profile.d/custom_system_wide.sh ] && . /etc/profile.d/custom_system_wide.sh
+      {{ common_prompt }}
   tags: [shell]

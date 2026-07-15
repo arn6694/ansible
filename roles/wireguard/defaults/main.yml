@@ -1,0 +1,14 @@
+---
+# WireGuard client tooling. The role installs wireguard-tools and the
+# import-firewalla-wg helper on every host. It does NOT deploy tunnel
+# configs: WireGuard private keys are per-device secrets generated on the
+# VPN server (Firewalla) — they must never enter this public repo. Enrolling
+# a laptop is one manual command after downloading its profile:
+#
+#   import-firewalla-wg ~/Downloads/<device>.conf
+#
+# Set these in /etc/ansible-pull.local.yml (machine-local, never in git):
+# the DNS server to force inside the tunnel (empty = keep the profile's own)
+wireguard_import_dns: ""
+# MTU override for the tunnel (empty = keep the profile's own)
+wireguard_import_mtu: "1412"

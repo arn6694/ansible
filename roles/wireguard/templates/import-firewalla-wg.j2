@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Managed by Ansible (wireguard role) — local edits will be overwritten.
+set -euo pipefail
+
+# Machine-local defaults, rendered from /etc/ansible-pull.local.yml.
+DNS_OVERRIDE="{{ wireguard_import_dns }}"
+MTU_OVERRIDE="{{ wireguard_import_mtu }}"
+
+usage() {
+  cat <<'USAGE'
+Usage: import-firewalla-wg /path/to/profile.conf [connection-name]
+
+Imports a Firewalla WireGuard client config into NetworkManager without
+printing private keys. DNS/MTU overrides come from the ansible-managed
+defaults baked into this script (set via /etc/ansible-pull.local.yml).
+The source config remains local on this machine.
+
+Examples:
+  import-firewalla-wg ~/Downloads/brian-g14.conf
+  import-firewalla-wg ~/Downloads/jade-laptop.conf firewalla-jade
+USAGE
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" || $# -lt 1 ]]; then
+  usage
+  exit 0
+fi
+
+src="$1"
+name="${2:-firewalla}"
+
+if [[ ! -f "$src" ]]; then
+  echo "ERROR: Config file not found: $src" >&2
+  exit 1
+fi
+
+if ! command -v nmcli >/dev/null 2>&1; then
+  echo "ERROR: nmcli not found — this helper targets NetworkManager machines." >&2
+  echo "Headless host? Copy the config to /etc/wireguard/ and use wg-quick instead." >&2
+  exit 1
+fi
+
+if ! command -v wg >/dev/null 2>&1; then
+  echo "ERROR: wg not found. Install the wireguard-tools package." >&2
+  exit 1
+fi
+
+workdir="$HOME/.vpn-import"
+install -d -m 700 "$workdir"
+tmp="$(mktemp "$workdir/${name}.XXXXXX.conf")"
+trap 'rm -f "$tmp"' EXIT
+
+# Normalize a local copy. Do not print config contents; it contains a private key.
+awk -v dns="$DNS_OVERRIDE" -v mtu="$MTU_OVERRIDE" '
+  BEGIN { saw_dns=0; saw_mtu=0 }
+  dns != "" && /^DNS[[:space:]]*=/  { print "DNS = " dns; saw_dns=1; next }
+  mtu != "" && /^MTU[[:space:]]*=/  { print "MTU = " mtu; saw_mtu=1; next }
+  /^\[Peer\]/ {
+    if (dns != "" && !saw_dns) print "DNS = " dns
+    if (mtu != "" && !saw_mtu) print "MTU = " mtu
+    print; next
+  }
+  { print }
+' "$src" > "$tmp"
+chmod 600 "$tmp"
+
+if nmcli -t -f NAME connection show | grep -Fxq "$name"; then
+  echo "Existing NetworkManager connection '$name' found; deleting old profile first."
+  sudo nmcli connection delete "$name" >/dev/null
+fi
+
+sudo nmcli connection import type wireguard file "$tmp" >/dev/null
+imported="$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="wireguard" {print $1}' | tail -n1)"
+
+if [[ -n "$imported" && "$imported" != "$name" ]]; then
+  sudo nmcli connection modify "$imported" connection.id "$name"
+fi
+
+sudo nmcli connection modify "$name" connection.autoconnect no
+if [[ -n "$DNS_OVERRIDE" ]]; then
+  sudo nmcli connection modify "$name" \
+    ipv4.dns "$DNS_OVERRIDE" \
+    ipv4.ignore-auto-dns yes
+fi
+
+echo "Imported WireGuard profile: $name"
+echo "Private key was not displayed. Source file stayed local: $src"
+echo
+echo "Connect:    nmcli connection up '$name'"
+echo "Disconnect: nmcli connection down '$name'"
+echo "Verify:     wg show && resolvectl status"

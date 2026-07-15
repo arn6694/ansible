@@ -22,6 +22,7 @@ role then installs a systemd timer that re-pulls **hourly** with
       common/          base packages, shell config, prompt
       admin_user/      user, SSH public key, passwordless sudo
       motd/            dynamic login banner
+      wireguard/       wireguard-tools + import-firewalla-wg helper
       ansible_pull/    the systemd service + timer (self-updating)
 
 Supported distros — tested in containers, idempotent (`changed=0` on rerun):
@@ -40,6 +41,26 @@ collections. Exception: Arch must install the full `ansible` package (its
 - Per-machine differences go in role variables — override in `local.yml` or,
   if divergence grows, add `host_vars/<hostname>.yml` and switch `local.yml`
   to `hosts: all` (ansible-pull adds the machine's hostname to its inventory).
+
+## Machine-local overrides
+
+`local.yml` loads `/etc/ansible-pull.local.yml` if it exists. That file is
+where anything machine- or network-specific goes (internal IPs, DNS servers,
+NAS paths) — it never enters this public repo. Example:
+
+    # /etc/ansible-pull.local.yml  (root:root 0644)
+    wireguard_import_dns: "<your internal DNS server>"
+
+## Enrolling a laptop on the VPN
+
+The `wireguard` role installs the tools and the import helper everywhere, but
+tunnel configs are per-device secrets and stay off GitHub. Once per laptop:
+
+1. Create the device in the Firewalla app / web UI and download its `.conf`.
+2. `import-firewalla-wg ~/Downloads/<device>.conf` — imports into
+   NetworkManager without echoing the private key, applying the DNS/MTU
+   overrides from `/etc/ansible-pull.local.yml`.
+3. `nmcli connection up firewalla` when away from home.
 
 ## Day-to-day
 

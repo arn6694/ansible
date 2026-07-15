@@ -9,6 +9,22 @@
   connection: local
   become: true
 
+  # This repo is PUBLIC, so anything machine- or network-specific (internal
+  # IPs, NAS paths, DNS servers) lives in a local file that never enters git.
+  # Absent file = defaults only; roles must cope with that.
+  pre_tasks:
+    - name: Check for machine-local overrides
+      ansible.builtin.stat:
+        path: /etc/ansible-pull.local.yml
+      register: local_overrides
+      tags: [always]
+
+    - name: Load machine-local overrides (not in git)
+      ansible.builtin.include_vars:
+        file: /etc/ansible-pull.local.yml
+      when: local_overrides.stat.exists
+      tags: [always]
+
   roles:
     - role: common
       tags: [common, packages, shell]
@@ -16,5 +32,7 @@
       tags: [user, ssh]
     - role: motd
       tags: [motd]
+    - role: wireguard
+      tags: [wireguard, vpn]
     - role: ansible_pull
       tags: [pull, timer]

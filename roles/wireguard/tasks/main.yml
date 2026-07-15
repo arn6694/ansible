@@ -1,0 +1,17 @@
+---
+# wireguard-tools is native on Debian/Arch/Fedora/SUSE and in EPEL for
+# RHEL/Rocky (the common role enables EPEL before this role runs).
+- name: Install WireGuard tools
+  ansible.builtin.package:
+    name: wireguard-tools
+    state: present
+  tags: [wireguard]
+
+- name: Install Firewalla profile import helper
+  ansible.builtin.template:
+    src: import-firewalla-wg.j2
+    dest: /usr/local/bin/import-firewalla-wg
+    mode: '0755'
+    owner: root
+    group: root
+  tags: [wireguard]
